@@ -5,7 +5,7 @@ __lua__
 
 function _init()
  poke(0x5f80,0)
- poke(0x5f81,1)
+ poke(0x5f81,0)
  set_p("x",1,0)
  set_p("x",2,0)
 end
