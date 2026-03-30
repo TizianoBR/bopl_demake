@@ -6,8 +6,8 @@ __lua__
 function _init()
  poke(0x5f80,0)
  poke(0x5f81,0)
- set_p("x",1,0)
- set_p("x",2,0)
+ poke(0x5f82,0)
+ poke(0x5f83,0)
 end
 
 function _update()
@@ -15,14 +15,13 @@ function _update()
  if btnp(❎) then poke(0x5f81,2) end
  
  local plr_id=peek(0x5f81)
+ local addr=0x5f81+plr_id
  
  if btnp(⬆️) then
-  set_p("x",plr_id,
-   get_p("x",plr_id)+1)
+  poke(addr,peek(addr)+1)
  end
  if btnp(⬇️) then
-  set_p("x",plr_id,
-   get_p("x",plr_id)-1)
+  poke(addr,peek(addr)-1)
  end
 end
 
@@ -34,8 +33,8 @@ function _draw()
  else
   cls()
  end
- print(get_p("x",1))
- print(get_p("x",2))
+ print(peek(0x5f82))
+ print(peek(0x5f83)
 end
 -->8
 --netcode
