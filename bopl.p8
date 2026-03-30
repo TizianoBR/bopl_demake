@@ -34,7 +34,7 @@ function _draw()
   cls()
  end
  print(peek(0x5f82))
- print(peek(0x5f83)
+ print(peek(0x5f83))
 end
 -->8
 --netcode
