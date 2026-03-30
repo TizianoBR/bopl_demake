@@ -1,5 +1,5 @@
-roomIdIndex: 0
-playerIdIndex: 1
+roomIdIndex: 1
+playerIdIndex: 0
 playerDataIndicies:
   - []
   - [4, 2, 3, 6, 7, 8, 9]
