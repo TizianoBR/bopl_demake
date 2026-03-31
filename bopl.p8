@@ -4,8 +4,7 @@ __lua__
 --bopl
 
 function _init()
- poke(0x5f80,0)
- poke(0x5f81,0)
+ memset(0x5f80,0,128)
  set_n(addr_p("x",1),60)
  set_n(addr_p("y",1),64)
  set_n(addr_p("x",2),68)
@@ -43,6 +42,9 @@ function _draw()
  else
   cls()
  end
+ 
+ print(plr_joined(1))
+ print(plr_joined(2))
  
  spr(0,get_n(addr_p("x",1)),
   get_n(addr_p("y",1)))
@@ -124,11 +126,17 @@ end
 
 --bit mask data (packed data)
 function get_bm(addr,len,off)
- 
+ return flr(peek(addr)/(2^off))%2^len
 end
 
 function set_bm(addr,len,off,v)
- 
+ poke(addr,
+  bor(
+   band(
+    bnot(
+     (2^len-1)*2^off),
+    peek(addr)),
+   (v%2^len)*2^off))
 end
 
 --land state data
@@ -150,6 +158,10 @@ function set_pot(obj,plr,v)
 end
 
 
+function plr_joined(plr)
+ return 1==get_bm(addr_p(
+  "obj_t_hi",plr),1,7)
+end
 -->8
 --room select
 
