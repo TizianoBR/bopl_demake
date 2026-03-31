@@ -6,8 +6,8 @@ __lua__
 function _init()
  poke(0x5f80,0)
  poke(0x5f81,0)
- poke(0x5f82,0)
- poke(0x5f83,0)
+ set_p("x",1,0)
+ set_p("x",2,0)
 end
 
 function _update()
@@ -15,13 +15,14 @@ function _update()
  if btnp(❎) then poke(0x5f81,2) end
  
  local plr_id=peek(0x5f81)
- local addr=0x5f81+plr_id
  
  if btnp(⬆️) then
-  poke(addr,peek(addr)+1)
+  set_p("x",plr_id,
+   get_p("x",plr_id)+1)
  end
  if btnp(⬇️) then
-  poke(addr,peek(addr)-1)
+  set_p("x",plr_id,
+   get_p("x",plr_id)-1)
  end
 end
 
@@ -33,8 +34,8 @@ function _draw()
  else
   cls()
  end
- print(peek(0x5f82))
- print(peek(0x5f83))
+ print(get_p("x",1))
+ print(get_p("x",2))
 end
 -->8
 --netcode
@@ -42,6 +43,7 @@ end
 --20 bytes per player (5 plrs)
 --4 bytes per land (6 lands)
 --(in charge of player 1)
+function init_lookup()
 lookup={
  land_x=0x5f82,
  land_y=0x5f83,
@@ -66,6 +68,7 @@ lookup={
  obj_y2=0x5fa3,
  obj_extra=0x5fa4
 }
+end
 
 function get(key,section)
  if key[1]=="l" then
