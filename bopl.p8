@@ -12,8 +12,20 @@ function _init()
 end
 
 function _update()
- if btnp(🅾️) then poke(0x5f81,1) end
- if btnp(❎) then poke(0x5f81,2) end
+ if btnp(🅾️) then
+  poke(0x5f81,1)
+  set_bm(addr_p("obj_t_hi",1),
+   1,7,1)
+  set_bm(addr_p("obj_t_hi",2),
+   1,7,0)
+ end
+ if btnp(❎) then
+  poke(0x5f81,2)
+  set_bm(addr_p("obj_t_hi",1),
+   1,7,0)
+  set_bm(addr_p("obj_t_hi",2),
+   1,7,1)
+ end
  
  local plr_id=peek(0x5f81)
  
