@@ -6,8 +6,8 @@ __lua__
 function _init()
  poke(0x5f80,0)
  poke(0x5f81,0)
- set_p("x",1,0)
- set_p("x",2,0)
+ set_n(addr_p("x",1),0)
+ set_n(addr_p("x",2),0)
 end
 
 function _update()
@@ -16,13 +16,13 @@ function _update()
  
  local plr_id=peek(0x5f81)
  
+ if plr_id<=0 then return end
+ 
  if btnp(⬆️) then
-  set_p("x",plr_id,
-   get_p("x",plr_id)+1)
+  inc_n(addr_p("x",plr_id),1)
  end
  if btnp(⬇️) then
-  set_p("x",plr_id,
-   get_p("x",plr_id)-1)
+  inc_n(addr_p("x",plr_id),-1)
  end
 end
 
@@ -34,8 +34,8 @@ function _draw()
  else
   cls()
  end
- print(get_p("x",1))
- print(get_p("x",2))
+ print(get_n(addr_p("x",1)))
+ print(get_n(addr_p("x",2)))
 end
 -->8
 --netcode
@@ -51,8 +51,8 @@ lookup={
  --dir:2b,len:3b,radius:3b
  land_state=0x5f97,
  --normal,grow,reduce,blink,
- --destroy
- --ungrabbable,harmless
+ --destroy,harmless
+ --ungrabbable
  --4bits
  
  x=0x5f9b,
@@ -68,6 +68,38 @@ lookup={
  obj_y2=0x5fa3,
  obj_extra=0x5fa4
 }
+
+--get addr of land data
+function addr_l(key,land)
+ return lookup[key]+(land-1)*3
+end
+
+--get addr of player data
+function addr_p(key,plr)
+ return lookup[key]+(plr-1)*20
+end
+
+--get addr of player object data
+function addr_po(key,obj,plr)
+ return lookup[key]+(plr-1)*20+
+  (obj-1)*5
+end
+
+--number data
+function get_n(addr)
+ return peek(addr)-64
+end
+
+function set_n(addr,v)
+ poke(addr,v+64)
+end
+
+function inc_n(accr,v)
+ poke(addr,peek(addr)+v)
+end
+
+--bit mask data (packed data)
+
 
 function get(key,section)
  if key[1]=="l" then
@@ -145,20 +177,6 @@ function set_po(key,obj,plr,v)
   (obj-1)*5,v+64)
 end
 
-function get_land()
- local lands={}
- for i=1,7 do
-  local land={
-   x=get_l("land_x",i),
-   y=get_l("land_y",i),
-   dir=get_l("land_dir",i),
-   len=get_l("land_len",i),
-   r=get_l("land_r",i)
-  }
-  add(lands,land)
- end
- return lands
-end
 -->8
 --room select
 
