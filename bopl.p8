@@ -43,7 +43,7 @@ end
 --20 bytes per player (5 plrs)
 --4 bytes per land (6 lands)
 --(in charge of player 1)
-function init_lookup()
+
 lookup={
  land_x=0x5f82,
  land_y=0x5f83,
@@ -68,7 +68,6 @@ lookup={
  obj_y2=0x5fa3,
  obj_extra=0x5fa4
 }
-end
 
 function get(key,section)
  if key[1]=="l" then
