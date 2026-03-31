@@ -5,28 +5,16 @@ __lua__
 
 function _init()
  memset(0x5f80,0,128)
- set_n(addr_p("x",1),60)
+ set_n(addr_p("x",1),52)
  set_n(addr_p("y",1),64)
- set_n(addr_p("x",2),68)
+ set_n(addr_p("x",2),64)
  set_n(addr_p("y",2),64)
+ set_n(addr_p("x",3),76)
+ set_n(addr_p("y",3),64)
+ join_room(0)
 end
 
 function _update()
- if btnp(🅾️) then
-  poke(0x5f81,1)
-  set_bm(addr_p("obj_t_hi",1),
-   1,7,1)
-  set_bm(addr_p("obj_t_hi",2),
-   1,7,0)
- end
- if btnp(❎) then
-  poke(0x5f81,2)
-  set_bm(addr_p("obj_t_hi",1),
-   1,7,0)
-  set_bm(addr_p("obj_t_hi",2),
-   1,7,1)
- end
- 
  local plr_id=peek(0x5f81)
  
  if plr_id==0 then
@@ -58,13 +46,24 @@ function _draw()
  print(plr_joined(1))
  print(plr_joined(2))
  
- spr(0,get_n(addr_p("x",1)),
-  get_n(addr_p("y",1)))
+ if plr_joined(1) then
+  spr(0,get_n(addr_p("x",1)),
+   get_n(addr_p("y",1)))
+ end
   
- pal(10,12)
- spr(0,get_n(addr_p("x",2)),
-  get_n(addr_p("y",2)))
- pal()
+ if plr_joined(2) then
+  pal(10,12)
+  spr(0,get_n(addr_p("x",2)),
+   get_n(addr_p("y",2)))
+  pal()
+ end
+ 
+ if plr_joined(3) then
+  pal(10,11)
+  spr(0,get_n(addr_p("x",3)),
+   get_n(addr_p("y",3)))
+  pal()
+ end
 end
 
 function btn2(b)
@@ -180,6 +179,23 @@ end
 function init_room_s()
  room_id=0
  plr_id=0
+end
+
+function join_room(room)
+ poke(0x5f80,room)
+ local free_id=0
+ for i=1,3 do
+  if not plr_joined(i) then
+   free_id=i
+   break
+  end
+ end
+ 
+ if free_id~=0 then
+  poke(0x5f81,free_id)
+  set_bm(addr_p("obj_t_hi",
+   free_id),1,7,1)
+ end
 end
 __gfx__
 00000000001110000011100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
