@@ -6,8 +6,10 @@ __lua__
 function _init()
  poke(0x5f80,0)
  poke(0x5f81,0)
- set_n(addr_p("x",1),0)
- set_n(addr_p("x",2),0)
+ set_n(addr_p("x",1),60)
+ set_n(addr_p("y",1),64)
+ set_n(addr_p("x",2),68)
+ set_n(addr_p("y",2),64)
 end
 
 function _update()
@@ -19,11 +21,17 @@ function _update()
  if plr_id==0 then
   return end
  
- if btnp(⬆️) then
-  inc_n(addr_p("x",plr_id),1)
+ if btn2(⬆️) then
+  inc_n(addr_p("y",plr_id),-1)
  end
- if btnp(⬇️) then
+ if btn2(⬇️) then
+  inc_n(addr_p("y",plr_id),1)
+ end
+ if btn2(⬅️) then
   inc_n(addr_p("x",plr_id),-1)
+ end
+ if btn2(➡️) then
+  inc_n(addr_p("x",plr_id),1)
  end
 end
 
@@ -31,18 +39,28 @@ function _draw()
  if peek(0x5f81)==1 then
   cls(8)
  elseif peek(0x5f81)==2 then
-  cls(11)
+  cls(3)
  else
   cls()
  end
- print(get_n(addr_p("x",1)))
- print(get_n(addr_p("x",2)))
+ 
+ spr(0,get_n(addr_p("x",1)),
+  get_n(addr_p("y",1)))
+  
+ pal(10,12)
+ spr(0,get_n(addr_p("x",2)),
+  get_n(addr_p("y",2)))
+ pal()
+end
+
+function btn2(b)
+ return btn(b) or btn(b,1)
 end
 -->8
 --netcode
 
 --20 bytes per player (5 plrs)
---4 bytes per land (6 lands)
+--3.5 bytes per land (7 lands)
 --(in charge of player 1)
 
 lookup={
@@ -50,6 +68,7 @@ lookup={
  land_y=0x5f83,
  land_dim=0x5f84,
  --dir:2b,len:3b,radius:3b
+ 
  land_state=0x5f97,
  --normal,grow,reduce,blink,
  --destroy,harmless
@@ -60,8 +79,12 @@ lookup={
  y=0x5f9c,
  extra=0x5f9d,
  --dir:3b,state:5b
- obj1_2_t=0x5f9e,
- obj2_3_t=0x5f9f,
+ 
+ obj_t_lo=0x5f9e,
+ --low obj2_t:3b,obj1_t:5b
+ obj_t_hi=0x5f9f,
+ --plr joined:1b,obj3_t:5b,
+ --high obj2_t:2b
  
  obj_x1=0x5fa0,
  obj_y1=0x5fa1,
@@ -100,83 +123,32 @@ function inc_n(addr,v)
 end
 
 --bit mask data (packed data)
-
-
-function get(key,section)
- if key[1]=="l" then
-  return peek(lookup[key]+
-   (section-1)*4)-64
- else
-  return peek(lookup[key]+
-   (section-1)*20)-64
- end
+function get_bm(addr,len,off)
+ 
 end
 
---get land data
-function get_l(key,land)
- return peek(lookup[key]+
-  (land-1)*3)-64
+function set_bm(addr,len,off,v)
+ 
 end
 
---get land state
+--land state data
 function get_ls(land)
  
 end
 
---get player data
-function get_p(key,plr)
- return peek(lookup[key]+
-  (plr-1)*20)-64
-end
-
---get player object type
-function get_pot(obj,plr)
- 
-end
-
---get player object data
-function get_po(key,obj,plr)
- return peek(lookup[key]+
-  (plr-1)*20+(obj-1)*5)-64
-end
-
-function set(key,section,value)
- if key[1]=="l" then
-  return poke(lookup[key]+
-   (section-1)*4,value+64)
- else
-  return poke(lookup[key]+
-   (section-1)*20,value+64)
- end
-end
-
---set land data
-function set_l(key,land,v)
- poke(lookup[key]+(land-1)*3,
-  v+64)
-end
-
---set land state
 function set_ls(land,v)
  
 end
 
---set player data
-function set_p(key,plr,v)
- poke(lookup[key]+(plr-1)*20,
-  v+64)
+--player object type data
+function get_pot(obj,plr)
+ 
 end
 
---set player object type
 function set_pot(obj,plr,v)
  
 end
 
---set player object data
-function set_po(key,obj,plr,v)
- poke(lookup[key]+(plr-1)*20+
-  (obj-1)*5,v+64)
-end
 
 -->8
 --room select
@@ -186,12 +158,14 @@ function init_room_s()
  plr_id=0
 end
 __gfx__
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000001110000011100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0011110001aaa10001aaa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01aaaa101aaaaa101aaaaa1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1aa1a1a11aa11a101aa1aaa100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1aa1a1a11aaaaa101aa1a1a100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+1aaaaaa11aa11a1001aaa1a100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01aaaa1001aaa100001aaa1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00111100001110000001110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 66688888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
 68688888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
