@@ -16,7 +16,8 @@ function _update()
  
  local plr_id=peek(0x5f81)
  
- if plr_id<=0 then return end
+ if plr_id==0 then
+  return end
  
  if btnp(⬆️) then
   inc_n(addr_p("x",plr_id),1)
@@ -94,7 +95,7 @@ function set_n(addr,v)
  poke(addr,v+64)
 end
 
-function inc_n(accr,v)
+function inc_n(addr,v)
  poke(addr,peek(addr)+v)
 end
 
