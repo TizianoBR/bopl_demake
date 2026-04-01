@@ -18,18 +18,10 @@ end
 function _update()
  plr_id=peek(0x5f81)
  
- if plr_id==1 then
-  poke(0x5fff,peek(0x5fff)+1)
-  if (peek(0x5fff)==0) run()
- elseif peek(0x5f80)~=0
-  and prev_kp_alv==peek(0x5fff)
-  then
-  kp_alv_tmr+=1
-  if (kp_alv_tmr>=90) run()
- else
-  kp_alv_tmr=0
+ kp_alv_tmr+=1
+ if kp_alv_tmr>255 then
+  run()
  end
- prev_kp_alv=peek(0x5fff)
  
  if peek(0x5f80)==0 then
   update_room_s()
@@ -44,7 +36,7 @@ function _draw()
  else
   draw_room_s()
  end
- print(peek(0x5fff))
+ print(kp_alv_tmr)
 end
 
 function btn2(b)
