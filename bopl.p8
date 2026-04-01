@@ -193,6 +193,8 @@ function draw_room_s()
 end
 
 function join_room()
+ for i=1,15 do flip() end
+
  local free_id=0
  for i=1,3 do
   if not plr_joined(i) then
