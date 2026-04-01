@@ -12,15 +12,15 @@ function _init()
   init_room_s()
  end
   
- kp_alv_tmr=0
+ kp_alv=0
 end
 
 function _update()
  plr_id=peek(0x5f81)
  
- kp_alv_tmr+=1
- if kp_alv_tmr>255 then
-  run()
+ if btn()==0 then
+  kp_alv+=1
+  if (kp_alv>255) run()
  end
  
  if peek(0x5f80)==0 then
@@ -36,11 +36,15 @@ function _draw()
  else
   draw_room_s()
  end
- print(kp_alv_tmr)
+ print(kp_alv)
 end
 
 function btn2(b)
  return btn(b) or btn(b,1)
+end
+
+function btnp2(b)
+ return btnp(b) or btnp(b,1)
 end
 -->8
 --netcode
@@ -156,21 +160,21 @@ function init_room_s()
 end
 
 function update_room_s()
- if (btnp(⬅️)) cur-=1
- if (btnp(➡️)) cur+=1
+ if (btnp2(⬅️)) cur-=1
+ if (btnp2(➡️)) cur+=1
  cur%=2
  
  if cur==0 then
-  if (btnp(⬆️)) room_hi+=1
-  if (btnp(⬇️)) room_hi-=1
+  if (btnp2(⬆️)) room_hi+=1
+  if (btnp2(⬇️)) room_hi-=1
   room_hi%=16
  elseif cur==1 then
-  if (btnp(⬆️)) room_lo+=1
-  if (btnp(⬇️)) room_lo-=1
+  if (btnp2(⬆️)) room_lo+=1
+  if (btnp2(⬇️)) room_lo-=1
   room_lo%=16
  end
  
- if btnp(🅾️) or btnp(❎) then
+ if btnp2(🅾️) or btnp2(❎) then
   poke(0x5f80,room_hi*16+room_lo)
   run()
  end
@@ -239,6 +243,11 @@ function update_game()
  end
  if btn2(➡️) then
   inc_n(addr_p("x",plr_id),1)
+  if get_n(addr_p("x",plr_id))
+   >127 then
+   inc_n(addr_p("x",plr_id),
+    -127)
+  end
  end
 end
 
