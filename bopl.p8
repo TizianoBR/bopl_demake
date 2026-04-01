@@ -21,6 +21,8 @@ function _update()
  if btn()==0 then
   kp_alv+=1
   if (kp_alv>255) run()
+ else
+  kp_alv=0
  end
  
  if peek(0x5f80)==0 then
@@ -205,7 +207,7 @@ function draw_room_s()
 end
 
 function join_room()
- for i=1,5 do flip() end
+ for i=1,15 do flip() end
 
  local free_id=0
  for i=1,3 do
