@@ -5,64 +5,24 @@ __lua__
 
 function _init()
  memset(0x5f80,0,128)
- set_n(addr_p("x",1),52)
- set_n(addr_p("y",1),64)
- set_n(addr_p("x",2),64)
- set_n(addr_p("y",2),64)
- set_n(addr_p("x",3),76)
- set_n(addr_p("y",3),64)
- join_room(0)
+ init_room_s()
 end
 
 function _update()
- local plr_id=peek(0x5f81)
+ plr_id=peek(0x5f81)
  
  if plr_id==0 then
-  return end
+  update_room_s()
+ end
  
- if btn2(⬆️) then
-  inc_n(addr_p("y",plr_id),-1)
- end
- if btn2(⬇️) then
-  inc_n(addr_p("y",plr_id),1)
- end
- if btn2(⬅️) then
-  inc_n(addr_p("x",plr_id),-1)
- end
- if btn2(➡️) then
-  inc_n(addr_p("x",plr_id),1)
- end
+ update_game()
 end
 
 function _draw()
- if peek(0x5f81)==1 then
-  cls(8)
- elseif peek(0x5f81)==2 then
-  cls(3)
+ if plr_id~=0 then
+  draw_game() 
  else
-  cls()
- end
- 
- print(plr_joined(1))
- print(plr_joined(2))
- 
- if plr_joined(1) then
-  spr(0,get_n(addr_p("x",1)),
-   get_n(addr_p("y",1)))
- end
-  
- if plr_joined(2) then
-  pal(10,12)
-  spr(0,get_n(addr_p("x",2)),
-   get_n(addr_p("y",2)))
-  pal()
- end
- 
- if plr_joined(3) then
-  pal(10,11)
-  spr(0,get_n(addr_p("x",3)),
-   get_n(addr_p("y",3)))
-  pal()
+  draw_room_s()
  end
 end
 
@@ -177,8 +137,53 @@ end
 --room select
 
 function init_room_s()
- room_id=0
- plr_id=0
+ room_lo=0
+ room_hi=0
+ cur=0
+end
+
+function update_room_s()
+ if (btnp(⬅️)) cur-=1
+ if (btnp(➡️)) cur+=1
+ cur%=2
+ 
+ if cur==0 then
+  if (btnp(⬆️)) room_hi+=1
+  if (btnp(⬇️)) room_hi-=1
+  room_hi%=16
+ elseif cur==1 then
+  if (btnp(⬆️)) room_lo+=1
+  if (btnp(⬇️)) room_lo-=1
+  room_lo%=16
+ end
+ 
+ if btnp(🅾️) or btnp(❎) then
+  join_room(room_hi*16+room_lo)
+ end
+end
+
+function draw_room_s()
+ cls(1)
+
+ print("choose a room to join",
+  22,32,13)
+
+ print("room id:",38,61,13)
+ 
+ local d="0123456789abcdef"
+ print(d[room_hi+1],77,61,8-cur)
+ spr(0,76,50)
+ spr(0,76,69,1,1,false,true)
+ 
+ if (cur==1) c=8 else c=7
+ print(d[room_lo+1],85,61,7+cur)
+ spr(0,84,50)
+ spr(0,84,69,1,1,false,true)
+ 
+ print("press 🅾️ or ❎ to join",
+  20,90,13)
+ print("the selected room",
+  30,96,13)
 end
 
 function join_room(room)
@@ -199,17 +204,79 @@ function join_room(room)
   poke(0x5f81,free_id)
   set_bm(addr_p("obj_t_hi",
    free_id),1,7,1)
+  init_game(free_id)
  end
 end
+-->8
+--game logic
+
+function init_game(plr)
+ set_n(addr_p("x",plr),
+  64+16*(plr-2))
+ set_n(addr_p("y",plr),64)
+end
+
+function update_game()
+ if btn2(⬆️) then
+  inc_n(addr_p("y",plr_id),-1)
+ end
+ if btn2(⬇️) then
+  inc_n(addr_p("y",plr_id),1)
+ end
+ if btn2(⬅️) then
+  inc_n(addr_p("x",plr_id),-1)
+ end
+ if btn2(➡️) then
+  inc_n(addr_p("x",plr_id),1)
+ end
+end
+
+function draw_game()
+ if plr_id==1 then
+  cls(8)
+ elseif plr_id==2 then
+  cls(3)
+ elseif plr_id==3 then
+  cls(2)
+ else
+  cls()
+ end
+
+ if plr_joined(1) then
+  pal()
+  draw_spr(1,
+   get_n(addr_p("x",1)),
+   get_n(addr_p("y",1)),4)
+ end
+  
+ if plr_joined(2) then
+  pal(10,12)
+  draw_spr(1,
+   get_n(addr_p("x",2)),
+   get_n(addr_p("y",2)),4)
+ end
+ 
+ if plr_joined(3) then
+  pal(10,11)
+  draw_spr(1,
+   get_n(addr_p("x",3)),
+   get_n(addr_p("y",3)),4)
+ end
+ pal()
+end
+
+function draw_spr(s,x,y,sz,fh,fv)
+ spr(s,x-sz,y-sz,ceil(sz/4),ceil(sz/4),fh,fv)
+end
 __gfx__
-00000000001110000011100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0011110001aaa10001aaa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-01aaaa101aaaaa101aaaaa1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1aa1a1a11aa11a101aa1aaa100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1aa1a1a11aaaaa101aa1a1a100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-1aaaaaa11aa11a1001aaa1a100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-01aaaa1001aaa100001aaa1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00111100001110000001110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000011100000111000001110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000000011110001aaa10001aaa10001aaa1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000001aaaa101aaaaa101aaaaa101a11aa100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001aa1a1a11aa11a101aa1aaa11aaaaaa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000001aa1a1a11aaaaa101aa1a1a11aa11aa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+007000001aaaaaa11aa11a1001aaa1a101aaaaa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0777000001aaaa1001aaa100001aaa10001aaa100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+77777000001111000011100000011100000111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 66688888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
 68688888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
