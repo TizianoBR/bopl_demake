@@ -24,6 +24,7 @@ function _draw()
  else
   draw_room_s()
  end
+ print(peek(0x5f80))
 end
 
 function btn2(b)
