@@ -15,6 +15,8 @@ end
 function _update()
  plr_id=peek(0x5f81)
  
+ poke(0x5fff,peek(0x5fff)+1)
+ 
  if plr_id==0 then
   update_room_s()
  end
