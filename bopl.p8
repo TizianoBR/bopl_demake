@@ -4,8 +4,12 @@ __lua__
 --bopl
 
 function _init()
- memset(0x5f80,0,128)
- init_room_s()
+ memset(0x5f81,0,128)
+ if peek(0x5f80)~=0 then
+  join_room()
+ else
+  init_room_s()
+ end
 end
 
 function _update()
@@ -140,7 +144,7 @@ end
 function init_room_s()
  room_lo=0
  room_hi=0
- cur=0
+ cur=1
 end
 
 function update_room_s()
@@ -159,7 +163,8 @@ function update_room_s()
  end
  
  if btnp(🅾️) or btnp(❎) then
-  join_room(room_hi*16+room_lo)
+  poke(0x5f80,room_hi*16+room_lo)
+  run()
  end
 end
 
@@ -187,12 +192,7 @@ function draw_room_s()
   30,96,13)
 end
 
-function join_room(room)
- poke(0x5f80,room)
- for i=1,15 do
-  flip()
- end
- 
+function join_room()
  local free_id=0
  for i=1,3 do
   if not plr_joined(i) then
