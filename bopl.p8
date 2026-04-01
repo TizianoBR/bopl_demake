@@ -4,24 +4,37 @@ __lua__
 --bopl
 
 function _init()
- memset(0x5f81,0,128)
- if peek(0x5f80)~=0 then
+ if peek(0x5f80)~=0 and
+  peek(0x5f81)==0 then
   join_room()
- else
+ elseif peek(0x5f80)==0 then
+  memset(0x5f81,0,128)
   init_room_s()
  end
+  
+ kp_alv_tmr=0
 end
 
 function _update()
  plr_id=peek(0x5f81)
  
- poke(0x5fff,peek(0x5fff)+1)
- 
- if plr_id==0 then
-  update_room_s()
+ if plr_id==1 then
+  poke(0x5fff,peek(0x5fff)+1)
+ elseif peek(0x5f80)~=0
+  and prev_kp_alv==peek(0x5fff)
+  then
+  kp_alv_tmr+=1
+  if (kp_alv_tmr>=90) run()
+ else
+  kp_alv_tmr=0
  end
+ prev_kp_alv=peek(0x5fff)
  
- update_game()
+ if peek(0x5f80)==0 then
+  update_room_s()
+ else
+  update_game()
+ end
 end
 
 function _draw()
