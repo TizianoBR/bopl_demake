@@ -20,6 +20,7 @@ function _update()
  
  if plr_id==1 then
   poke(0x5fff,peek(0x5fff)+1)
+  if (peek(0x5fff)==0) run()
  elseif peek(0x5f80)~=0
   and prev_kp_alv==peek(0x5fff)
   then
@@ -43,7 +44,7 @@ function _draw()
  else
   draw_room_s()
  end
- print(peek(0x5f80))
+ print(peek(0x5fff))
 end
 
 function btn2(b)
