@@ -80,7 +80,7 @@ lookup={
  --state:
  --falling,attached,bow?,gun,
  --muscle,use ability
- --look dir,size
+ --size
  
  obj_t_lo=0x5f9e,
  --low obj2_t:3b,obj1_t:5b
@@ -88,11 +88,19 @@ lookup={
  --look dir:1b,obj3_t:5b,
  --high obj2_t:2b
  
- obj_x1=0x5fa0,
- obj_y1=0x5fa1,
- obj_x2=0x5fa2,
- obj_y2=0x5fa3,
- obj_extra=0x5fa4
+ obj_clnt=0x5fa0,
+ --byte for client plr (2-5)
+ obj_h1=0x5fa1,
+ obj_h2=0x5fa2,
+ obj_h3=0x5fa3,
+ obj_h4=0x5fa4,
+ --bytes for host plr(1)
+ 
+ plr_bm=0x5fff
+ --bitmap of players:
+ --4b:that are dead
+ --4b:forcefully detached
+ --also round start sync
 }
 
 --get addr of land data
