@@ -44,7 +44,7 @@ function _draw()
  end
  ?kp_alv
  ?debug
- ?dget(0)
+ ?peek(0x4300)
 end
 
 function btn2(b)
@@ -97,9 +97,8 @@ lookup={
  --bytes for host plr(1)
  
  plr_bm=0x5fff
- --bitmap of players:
- --4b:that are dead
- --4b:forcefully detached
+ --bitmap of players that are
+ --dead
  --also round start sync
 }
 
@@ -213,11 +212,11 @@ function update_room_s()
  if cur==0 then
   if btnp2(⬆️) then
    room_hi+=1
-   dset(0,dget(0)+1)
+   poke(0x4300,peek(0x4300)+1)
   end
   if btnp2(⬇️) then
    room_hi-=1
-   dset(0,0)
+   poke(0x4300,0)
   end
   room_hi%=16
  elseif cur==1 then
