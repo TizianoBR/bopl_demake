@@ -499,18 +499,18 @@ function update_game()
 --  set_plr(plr)
 -- end
 
- local p=get_plr(plr_id)
- if p.attach_id==1 and
-  prev_attach==0 then
-  debug={x=prev_x,y=prev_y,
-   dx=prev_dx,dy=prev_dy}
- end
- 
- prev_x=p.x
- prev_y=p.y
- prev_dx=p.dx
- prev_dy=p.dy
- prev_attach=p.attach_id
+-- local p=get_plr(plr_id)
+-- if p.attach_id==1 and
+--  prev_attach==0 then
+--  debug={x=prev_x,y=prev_y,
+--   dx=prev_dx,dy=prev_dy}
+-- end
+-- 
+-- prev_x=p.x
+-- prev_y=p.y
+-- prev_dx=p.dx
+-- prev_dy=p.dy
+-- prev_attach=p.attach_id
  
  for i in all({"buf🅾️","buf❎"})
   do
@@ -567,7 +567,8 @@ function snap(plr,land)
 end
 
 function global_coor(plr)
- if plr.attach_id==0 then
+ if plr.attach_id==0 or 
+  plr.id~=plr_id then
   return {x=plr.x,y=plr.y}
  end
  
