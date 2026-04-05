@@ -6,12 +6,14 @@ __lua__
 cartdata("bopl_demake_tbr")
 
 function _init()
+ debug={}
  if peek(0x5f80)~=0 and
   peek(0x5f81)==0 then
   join_room()
  elseif peek(0x5f80)==0 then
   memset(0x5f81,0,128)
   init_room_s()
+  memset(0x4300,0,0x170)
  end
   
  kp_alv=0
@@ -20,11 +22,11 @@ end
 function _update()
  plr_id=peek(0x5f81)
  
- if btn()==0
---  and peek(0x5f80)>0
+ --keep alive
+ if btn()==0 and peek(0x5f80)>0
   then
   kp_alv+=1
-  if (kp_alv>255) run()
+  if (kp_alv>300) run()
  else
   kp_alv=0
  end
@@ -43,8 +45,6 @@ function _draw()
   draw_room_s()
  end
  ?kp_alv
- ?debug
- ?peek(0x4300)
 end
 
 function btn2(b)
@@ -62,6 +62,11 @@ end
 --(in charge of player 1)
 
 lookup={
+ -----------------
+ --shared memory--
+ -----------------
+ 
+ --terrain data
  land_x=0x5f82,
  land_y=0x5f83,
  land_dim=0x5f84,
@@ -73,6 +78,7 @@ lookup={
  --ungrabbable
  --4bits
  
+ --player data
  x=0x5f9b,
  y=0x5f9c,
  extra=0x5f9d,
@@ -82,6 +88,7 @@ lookup={
  --muscle,use ability
  --size
  
+ --player object data (mostly)
  obj_t_lo=0x5f9e,
  --low obj2_t:3b,obj1_t:5b
  obj_t_hi=0x5f9f,
@@ -96,10 +103,54 @@ lookup={
  obj_h4=0x5fa4,
  --bytes for host plr(1)
  
- plr_bm=0x5fff
+ --utility for host
+ plr_bm=0x5fff,
  --bitmap of players that are
  --dead
  --also round start sync
+ 
+ -------------
+ --local ram--
+ -------------
+ 
+ --local plr data
+ attach_plr=0x4300,
+ --plr in charge of the land
+ --this plr is attached to,
+ --0 for normal land, 1-5 for
+ --player objects
+ attach_id=0x4301,
+ --id of the land this plr is
+ --attached to, 1-7 for normal
+ --land, 1-3 for player objects
+ x_dec=0x4302,
+ y_dec=0x4303,
+ --coordinate decimals, 2 digits
+ dx=0x4304,
+ dy=0x4305,
+ timer=0x4306,
+ timer_t=0x4307,
+ buf🅾️=0x4308,
+ buf❎=0x4309,
+ --btn buffers
+ land_last_x=0x430a,
+ land_last_y=0x430b,
+ 
+ --plr obj data (for host)
+ obj_attach_plr=0x4320,
+ obj_attach_id=0x4321,
+ obj_present=0x4322,
+ obj_state=0x4323,
+ obj_timer=0x4324,
+ obj_dir=0x4325,
+ obj_dx=0x4326,
+ obj_dy=0x4327,
+ 
+ --land data (for host)
+ land_present=0x4410,
+ land_timer=0x4411,
+ land_dx=0x4412,
+ land_dy=0x4413
 }
 
 --get addr of land data
@@ -113,10 +164,28 @@ function addr_p(key,plr)
 end
 
 --get addr of player object data
-function addr_po(key,obj,plr)
+function addr_o(key,obj,plr)
  return lookup[key]+(plr-1)*20+
   (obj-1)*5
 end
+
+--get addr of local plr
+function ram_p(key)
+ return lookup[key]
+end
+
+--get addr of local player
+--object data (for host)
+function ram_o(key,obj,plr)
+ return lookup[key]+(plr-1)*
+  0x30+(obj-1)*0x10
+end
+
+function ram_l(key,land)
+ return lookup[key]+(land-1)*
+  0x10
+end
+
 
 --number data
 function get_n(addr)
@@ -156,29 +225,77 @@ function set_ls(land,v)
 end
 
 --player object type data
-function get_pot(obj,plr)
+function get_ot(obj,plr)
  
 end
 
-function set_pot(obj,plr,v)
+function set_ot(obj,plr,v)
  
 end
 
 
 function get_plr(plr)
- return {
+ local tbl={
+  id=plr,
+  t="plr",
   x=get_n(addr_p("x",plr)),
   y=get_n(addr_p("y",plr)),
   dir=get_bm(addr_p("extra",
-   plr),3,5),
+   plr),3,5)/8,
   r=4,
-  st=get_bm(addr_p("extra",
-   plr),5,0)
+  size=get_bm(addr_p("extra",
+   plr),2,3),
+  state=get_bm(addr_p("extra",
+   plr),3,0),
+  look=get_bm(addr_p("obj_t_hi",
+   plr),1,7)
  }
+ if plr==plr_id then
+  tbl.attach_plr=get_n(ram_p(
+   "attach_plr"))
+  tbl.attach_id=get_n(ram_p(
+   "attach_id"))
+  tbl.x+=get_n(ram_p("x_dec"))
+   /100
+  tbl.y+=get_n(ram_p("y_dec"))
+   /100
+  tbl.dx=get_n(ram_p("dx"))/10
+  tbl.dy=get_n(ram_p("dy"))/10
+ end
+ return tbl
+end
+
+function set_plr(plr)
+ set_n(addr_p("x",plr.id),
+  flr(plr.x))
+ set_n(addr_p("y",plr.id),plr.y)
+ set_bm(addr_p("extra",plr.id),
+  3,5,flr(plr.dir*8+0.5)%8)
+ set_bm(addr_p("extra",plr.id),
+  2,3,plr.size)
+ set_bm(addr_p("extra",plr.id),
+  3,0,plr.state)
+ set_bm(addr_p("obj_t_hi",
+   plr.id),1,7,plr.look)
+ if plr.id==plr_id then
+  set_n(ram_p("x_dec"),
+   plr.x*100%100)
+  set_n(ram_p("y_dec"),
+   plr.y*100%100)
+  set_n(ram_p("attach_plr"),
+   plr.attach_plr)
+  set_n(ram_p("attach_id"),
+   plr.attach_id)
+  set_n(ram_p("dx"),plr.dx*10)
+  set_n(ram_p("dy"),plr.dy*10)
+ end
 end
 
 function get_land(land)
  return {
+  plr=0,
+  id=land,
+  t="land",
   x=get_n(addr_l("land_x",land)),
   y=get_n(addr_l("land_y",land)),
   dir=get_bm(addr_l("land_dim",
@@ -186,8 +303,27 @@ function get_land(land)
   len=get_bm(addr_l("land_dim",
    land),3,3),
   r=get_bm(addr_l("land_dim",
-   land),3,0)*5+10
+   land),3,0)*4+8
  }
+end
+
+function set_land(land)
+ set_n(addr_l("land_x",land.id),
+  land.x)
+ set_n(addr_l("land_y",land.id),
+  land.y)
+ set_bm(addr_l("land_dim",
+  land.id),3,3,land.len)
+ set_bm(addr_l("land_dim",
+  land.id),3,0,land.r)
+end
+
+--returns either normal land or
+--plr obj of "land" type
+function get_land_by_id(plr,id)
+ if plr==0 then
+  return get_land(id)
+ end
 end
 
 
@@ -210,14 +346,8 @@ function update_room_s()
  cur%=2
  
  if cur==0 then
-  if btnp2(⬆️) then
-   room_hi+=1
-   poke(0x4300,peek(0x4300)+1)
-  end
-  if btnp2(⬇️) then
-   room_hi-=1
-   poke(0x4300,0)
-  end
+  if (btnp2(⬆️)) room_hi+=1
+  if (btnp2(⬇️)) room_hi-=1
   room_hi%=16
  elseif cur==1 then
   if (btnp2(⬆️)) room_lo+=1
@@ -277,41 +407,189 @@ end
 --game logic
 
 function init_game(plr)
- set_n(addr_p("x",plr),
-  64+16*(plr-2))
- set_n(addr_p("y",plr),20)
+ plr_id=plr
+ local p=get_plr(plr)
+ p.x=64+16*(plr-2)
+ p.y=20
+
+-- p.x=174
+-- p.y=174
+-- p.x=180
+-- p.y=166
+-- p.x=-52
+-- p.y=-52
+
+ p.dir=0.25
+ p.state=0
+ p.dx=0
+ p.dy=0
+ p.attach_plr=0
+ p.attach_id=0
+ set_plr(p)
  
- set_n(addr_l("land_x",1),64)
- set_n(addr_l("land_y",1),64)
- set_bm(addr_l("land_dim",1),
-  0,5,3)
- set_bm(addr_l("land_dim",1),
-  0,3,0)
+-- set_n(addr_p("x",plr),
+--  64+16*(plr-2))
+-- set_n(addr_p("y",plr),20)
+-- set_bm(addr_p("extra",plr),
+--  8,0,0b01000000)
+-- set_n(ram_p("x_dec",plr),0)
+-- set_n(ram_p("y_dec",plr),0)
+-- set_n(ram_p("dx",plr),0)
+-- set_n(ram_p("dy",plr),0)
+-- set_n(ram_p("attach_plr"),0)
+-- set_n(ram_p("attach_id"),0)
+
+ local l=get_land(1)
+ l.x=30
+ l.y=64
+ l.dir=0
+ l.len=0
+ l.r=3
+ set_land(l)
+ 
+ local l=get_land(2)
+ l.x=80
+ l.y=70
+ l.dir=0
+ l.len=0
+ l.r=1
+ set_land(l)
+ 
+-- set_n(addr_l("land_x",1),64)
+-- set_n(addr_l("land_y",1),64)
+-- set_bm(addr_l("land_dim",1),
+--  5,3,0)
+-- set_bm(addr_l("land_dim",1),
+--  3,0,3)
+ 
+-- snap(get_plr(peek(0x5f81)),
+--  get_land(1))
 end
 
 function update_game()
- if btn2(⬆️) then
-  inc_n(addr_p("y",plr_id),-1)
+-- if btn2(⬆️) then
+--  inc_n(addr_p("y",plr_id),-1)
+-- end
+-- if btn2(⬇️) then
+--  inc_n(addr_p("y",plr_id),1)
+-- end
+-- if btn2(⬅️) then
+--  inc_n(addr_p("x",plr_id),-1)
+-- end
+-- if btn2(➡️) then
+--  inc_n(addr_p("x",plr_id),1)
+--  if get_n(addr_p("x",plr_id))
+--   >127 then
+--   inc_n(addr_p("x",plr_id),
+--    -127)
+--  end
+-- end
+-- 
+-- if btnp2(🅾️) then
+--  snap(get_plr(plr_id),
+--   get_land(1))
+-- end
+-- 
+-- if btnp2(❎) then
+--  local plr=get_plr(plr_id)
+--  plr.state=0
+--  local coor=global_coor(plr)
+--  plr.x=coor.x
+--  plr.y=coor.y
+--  set_plr(plr)
+-- end
+
+ local p=get_plr(plr_id)
+ if p.attach_id==1 and
+  prev_attach==0 then
+  debug={x=prev_x,y=prev_y,
+   dx=prev_dx,dy=prev_dy}
  end
- if btn2(⬇️) then
-  inc_n(addr_p("y",plr_id),1)
- end
- if btn2(⬅️) then
-  inc_n(addr_p("x",plr_id),-1)
- end
- if btn2(➡️) then
-  inc_n(addr_p("x",plr_id),1)
-  if get_n(addr_p("x",plr_id))
-   >127 then
-   inc_n(addr_p("x",plr_id),
-    -127)
+ 
+ prev_x=p.x
+ prev_y=p.y
+ prev_dx=p.dx
+ prev_dy=p.dy
+ prev_attach=p.attach_id
+ 
+ for i in all({"buf🅾️","buf❎"})
+  do
+  if get_n(ram_p(i))>0 then
+   inc_n(ram_p(i),-1)
   end
  end
  
+ if btnp2(🅾️) then
+  set_n(ram_p("buf🅾️"),4)
+ end
+ if btnp2(❎) then
+  set_n(ram_p("buf❎"),4)
+ end
+ 
+ lands={}
+ for i=1,7 do
+  local l=get_land(i)
+  if (l.x>-64) add(lands,l)
+ end
+ 
+ move_plr()
  
  collision=collide(
   get_land(1),get_plr(1))
 end
+
+function collide(e1,e2,push)
+ return (e1.x-e2.x)^2/2+
+  (e1.y-e2.y)^2/2<
+  (e1.r+e2.r)^2/2
+end
+
+function snap(plr,land)
+ local coor=global_coor(plr)
+ coor.x-=land.x
+ coor.y-=land.y
+ coor=normalize(coor)
+ 
+-- plr.x=flr(coor.x*
+--  (land.r+plr.r)+0.5)
+-- plr.y=flr(coor.y*
+--  (land.r+plr.r)+0.5)
+ plr.x=coor.x*(land.r+plr.r)
+ plr.y=coor.y*(land.r+plr.r)
+  
+ plr.attach_plr=land.plr
+ plr.attach_id=land.id
+ plr.state=1
+ plr.dir=atan2(coor.x,
+  coor.y)
+ 
+ set_plr(plr)
+end
+
+function global_coor(plr)
+ if plr.attach_id==0 then
+  return {x=plr.x,y=plr.y}
+ end
+ 
+ local land_attach=
+  get_land_by_id(plr.attach_plr,
+   plr.attach_id)
+ 
+ local x=plr.x+land_attach.x
+ local y=plr.y+land_attach.y
+ 
+ return {x=x,y=y}
+end
+
+function normalize(v)
+ local mag=(v.x^2+v.y^2)^0.5
+ return {
+  x=v.x/mag,
+  y=v.y/mag
+ }
+end
+-->8
+--draw game
 
 function draw_game()
  if plr_id==1 then
@@ -328,38 +606,65 @@ function draw_game()
  for j=0,1 do
 	 for i=0,7 do
 	  draw_spr(1,12*(i+1),110+j*12,
-	   4,10,i,j)
+	   4,10,i/8,j)
 	 end
+ end
+ 
+ for i=1,2 do
+	 draw_land(get_land(i))
  end
  
  --players
  local col={10,12,11}
+ local s={4,1}
  
- for plr=1,3 do
-  if plr_joined(plr) then
-	  draw_spr(1,
-	   get_n(addr_p("x",plr)),
-	   get_n(addr_p("y",plr)),
-	   4,col[plr],2,0)
+ for id=1,3 do
+  if plr_joined(id) then
+   local plr=get_plr(id)
+   if id==plr_id then
+	   local coor=global_coor(plr)
+		  draw_spr(s[plr.state+1],
+		   coor.x,coor.y,4,col[id],
+		   plr.dir,plr.look)
+	  else
+	   draw_spr(s[plr.state+1],
+	    plr.x,plr.y,4,col[id],
+	    plr.dir,plr.look)
+	  end
 	 end
  end
  
- draw_land(get_land(1))
- 
- ?collision
+ local p=get_plr(1)
+ ?p.x
+ ?p.y
+ ?p.attach_plr
+ ?p.attach_id
+ ?global_coor(p).x
+ ?global_coor(p).y
+ ?p.state
+ ?debug.x
+ ?debug.y
+ ?debug.dx
+ ?debug.dy
+ ?(174-30)^2+(174-64)^2
 end
 
 function draw_spr(s,x,y,sz,col,
  dir,look)
- dir=dir or 0
+ dir=dir or 0.25;dir*=8
  look=look or 0
  
  local fh=dir>3
  local fv=dir>2 and dir<7
  
- if dir%4==0 then s+=1
- elseif dir%4~=2 then s+=2
+ if dir%4==0 then
+  s+=1*ceil(sz/4)
+ elseif dir%4~=2 then
+  s+=2*ceil(sz/4)
  end
+ 
+ x+=1
+ y+=1
  
  if look==0 then
   pal(11,1)
@@ -384,20 +689,145 @@ function draw_land(land)
   land.r,11)
 end
 
-function collide(e1,e2,push)
- return (e1.x-e2.x)^2+
-  (e1.y-e2.y)^2<
-  (e1.r+e2.r)^2
+
+
+spr(6,64,64,1,1,fh,fv)
+-->8
+--player
+
+function move_plr()
+ local plr=get_plr(plr_id)
+ 
+ --falling
+ if plr.state==0 then  
+  if btn2(⬅️) and plr.dx>-1.5 then
+   plr.dx-=0.6
+   plr.look=1
+   plr.dx=mid(-1.5,plr.dx,1.5)
+  end
+  if btn2(➡️) and plr.dx<1.5 then
+   plr.dx+=0.6
+   plr.look=0
+   plr.dx=mid(-1.5,plr.dx,1.5)
+  end
+  if not(btn2(⬅️) or btn2(➡️))
+   then
+   if mid(-0.3,plr.dx,0.3)==plr.dx
+    then
+    plr.dx=0
+   else
+    plr.dx+=plr.dx<0 and 0.3 or -0.3
+   end
+  end
+  
+  plr.x+=plr.dx
+  
+  if plr.dy<6 then
+	  plr.dy+=0.4
+	 end
+  plr.y+=plr.dy
+  
+  for l in all(lands) do
+	  if collide(plr,l)
+	   then
+	   snap(plr,l)
+	   plr.dx=0
+	   plr.dy=0
+	  end
+  end
+ 
+ --attached
+ elseif plr.state==1 then
+  snap(plr,get_land_by_id(
+   plr.attach_plr,
+   plr.attach_id))
+ 
+  if get_n(ram_p("buf🅾️"))>0
+   then
+   local v=normalize(plr)
+   if plr.dir<0.5 then
+	   plr.dx=v.x*2.5
+	   if plr.dir<0.125 and
+	    btn2(⬅️) or plr.dir>0.375
+	    and btn2(➡️) then
+	    plr.dx=mid(-1.5,plr.dx,1.5)
+	    plr.dy=-4.5
+	   else
+		   plr.dy=-4
+		  end
+   else
+    plr.dx=v.x*3.5
+   end
+   plr.state=0
+   plr.dir=0.25
+   
+   plr.x,plr.y=
+    global_coor(plr).x,
+    global_coor(plr).y
+   
+   plr.attach_plr=0
+   plr.attach_id=0
+  else
+	  if btn2(⬅️) and plr.dx>-1.5 then
+	   plr.dx-=0.5
+	   plr.look=1
+	  end
+	  if btn2(➡️) and plr.dx<1.5 then
+	   plr.dx+=0.5
+	   plr.look=0
+	  end
+	  plr.dx=mid(-1.5,plr.dx,1.5)
+	  if not(btn2(⬅️) or btn2(➡️))
+	   then
+		  if mid(-0.3,plr.dx,0.3)==plr.dx
+		   then
+		   plr.dx=0
+		  else
+		   plr.dx+=plr.dx<0 and 0.3 or -0.3
+		  end
+		 end
+	  
+	  local v=normalize(plr)
+	  v.x,v.y=-v.y,v.x
+	  
+	  local pos_x,pos_y=plr.x,plr.y
+	  
+	  plr.x+=v.x*plr.dx
+	  plr.y+=v.y*plr.dx
+	  
+	  for i in all(lands) do
+	   if collide(plr,i) then
+	    plr.x,plr.y=pos_x,pos_y
+	    break
+	   end
+	  end
+	  
+	  snap(plr,get_land_by_id(
+	   plr.attach_plr,
+	   plr.attach_id))
+  end
+ end
+ set_plr(plr)
 end
 __gfx__
-00000000000000000011100000111000001111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000000011110001aaa10001aaa10001aaaa100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000001aaaa101aaeea101aeeaa101aebeba10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000001aebeba11aabba101aabaaa11aebeba10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000001aebeba11aaeea101aa1eba11aaaaaa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-007000001aaaaaa11aabba1001aaaba11aaaaaa10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0777000001aaaa1001aaa100001aaa1001aaaa100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-77777000001111000011100000011100001111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000011100000111000001110000011110000000000000000000011110000000000001110000011100000000000000000000000000000000000
+000000000011110001aaa10001aaa10001aaa10001aaaa10001111000011110001aaaa100000000001aaa10001aaa10000000000000000000000000000000000
+0000000001aaaa101aaeea101aeeaa101a1a1a101aebeba101aaaa1001aaaa101aaaaaa1000000001a11aa101aaaaa1000000000000000000000000000000000
+000000001aebeba11aabba101aabaaa11a1a1a101aebeba11aa1a1a11a1a1aa11aa1a1a1000000001aaaaaa11aa1aaa100000000000000000000000000000000
+000000001aebeba11aaeea101aa1eba11aaaaa101aaaaaa11aa1a1a11a1a1aa11aa1a1a1000000001aa11aa11aa1a1a100000000000000000000000000000000
+007000001aaaaaa11aabba1001aaaba11aaaaa101aaaaaa11aaaaaa11aaaaaa101aaaa100000000001aaaaa101aaa1a100000000000000000000000000000000
+0777000001aaaa1001aaa100001aaa1001aaa10001aaaa1001aaaa1001aaaa100011110000000000001aaa10001aaa1000000000000000000000000000000000
+77777000001111000011100000011100001110000011110000111100001111000000000000000000000111000001110000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000aaaaaaa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00aaaaaaaaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0aaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0aaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0aaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0aaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0aaaaaaaaaaa00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00aaaaaaaaa000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000aaaaaaa0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 66688888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
 68688888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888
